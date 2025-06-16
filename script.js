@@ -134,7 +134,6 @@ console.log(finalState);
 })();
 
 (() => {
-    console.log(`I'm here`);
     // What we've been dealing with are called reducers. They are basically functions that take states and actions and 
     // returns a new state based on what the action demands. So...
     // Step 1: Reducer function
@@ -179,5 +178,127 @@ const actions = [
 ];
 
 const finalState = dispatchActions(users, actions);
+console.log(finalState);
+})();
+
+(() => {
+const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" }
+];
+
+// create first reducer function
+function toggleActiveReducer (user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        return {...user, active: !user.active};
+    }
+    return user
+}
+
+function addRoleReducer (user, action) {
+    if (action.type === `ADD_ROLE`) {
+        if (!user.roles.includes(action.role)) {
+            return {...user, roles: [...user.roles, action.role]};
+        }
+        return user;
+    }
+    return user;
+}
+
+function userReducer (state, action) {
+    return state.map((object) => {
+        if (object.id !== action.id) return object;
+
+        let updateUser = toggleActiveReducer(object, action);
+        updateUser = addRoleReducer(updateUser, action);
+        return updateUser;
+    });
+}
+
+function userReducerDispatch (users, actions) { // Remember, this is the core of the entire operation. So 
+    // remember that the dispatch function is where the main component of the operation are added in i.e this 
+    // function has the parameter users and actions, and so, the arguments are added when it is called as will happen
+    // below The parameter then get's used as the initial value of the method and that passes the value to the
+    // accumulator, so acc === users === users(original array).
+    return actions.reduce((acc, action) => {
+        return userReducer(acc, action);
+    }, users);
+}
+
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => { // Here, we introduce UPDATE_NAME as a new type of action and data pipeline structures.
+    console.log(`I'm here`);
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" },
+  { type: "UPDATE_NAME", id: 2, name: "Robert" }
+];
+
+function toggleActiveReducer (user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        return {...user, active: !user.active};
+    }
+    return user;
+}
+
+function addRoleReducer (user, action) {
+    if (action.type === `ADD_ROLE` && !user.roles.includes(action.role)) {
+        return {...user, roles: [...user.roles, action.role]};
+    }
+    return user;
+}
+
+function updateNameReducer (user, action) {
+    if (action.type === `UPDATE_NAME`) {
+           return {...user, name: action.name}; 
+    }
+    return user;
+}
+
+const userReducerFunctions = [toggleActiveReducer, addRoleReducer, updateNameReducer];  // create an array of functions
+function userReducer (state, action) {
+    return state.map((object) => {
+        if (object.id !== action.id) return object;
+
+        let updateUser = toggleActiveReducer(object, action); // Now this part is worth considering...
+        // This type of operation will create a pipeline. A pipeline is a programming pattern where data flows
+        // through a series of functions, and each function transforms the data a bit more.
+        // Instead, what you should do is push the items in an array and then come here and write an operation that
+        // utilizes arrays. So for example, this is what we'd do...(refer to the array above and then the return statem-
+        // ent below)
+        updateUser = addRoleReducer (updateUser, action);
+        updateUser = updateNameReducer (updateUser, action);
+
+        // Much cleaner!
+        return userReducerFunctions.reduce((user, reducerFunction) => {
+            return reducerFunction(user, action);
+        }, object);
+    });
+}
+
+function userReducerDispatch (users, actions) {
+    return actions.reduce((acc, action) => {
+        return userReducer(acc, action);
+    }, users);
+}
+
+const finalState = userReducerDispatch(users, actions);
 console.log(finalState);
 })();
