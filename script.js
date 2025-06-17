@@ -103,7 +103,10 @@ const actions = [
   { type: "ADD_ROLE", id: 2, role: "editor" }
 ];
 
-function updateUsers(users, action) {
+function updateUsers(users, action) {  // This is refered to as a monolithic or integral design. It's the opposite
+// of modular designs and this example clearly expresses this difference. Breaking code into small, reusable parts,
+// where each part does one clear job, and can be swapped out, reused, or combined with others easily is the basis of
+// modular designs. The examples after the next two IIFE functions illustrate what modular design is all about.
     return users.map((object) => {
         if (object.id !== action.id) {
             return object;
@@ -236,8 +239,7 @@ const finalState = userReducerDispatch(users, actions);
 console.log(finalState);
 })();
 
-(() => { // Here, we introduce UPDATE_NAME as a new type of action and data pipeline structures.
-    console.log(`I'm here`);
+(() => { // Here, we introduce UPDATE_NAME as a new type of action and introduce data pipeline structures.
     const users = [
   { id: 1, name: "Alice", active: true, roles: ["admin"] },
   { id: 2, name: "Bob", active: false, roles: ["user"] },
@@ -272,7 +274,13 @@ function updateNameReducer (user, action) {
     return user;
 }
 
-const userReducerFunctions = [toggleActiveReducer, addRoleReducer, updateNameReducer];  // create an array of functions
+const userReducerFunctions = [
+    toggleActiveReducer, 
+    addRoleReducer, 
+    updateNameReducer
+];  // create an array of function references. 
+// Just as a reminder, a function reference is that which does not run immediately. As a visual cue,
+// references do not have brackets. They can be called at anytime but will not run immediately.
 function userReducer (state, action) {
     return state.map((object) => {
         if (object.id !== action.id) return object;
@@ -299,6 +307,139 @@ function userReducerDispatch (users, actions) {
     }, users);
 }
 
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => {  // Here we introduce REMOVE_ROLE as a new type of action.
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" },
+  { type: "UPDATE_NAME", id: 2, name: "Robert" },
+  { type: "REMOVE_ROLE", id: 3, role: "moderator" }
+];
+
+function toggleActiveReducer (user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        return {...user, active: !user.active}
+    }
+    return user;
+}
+
+function addRoleReducer (user, action) {
+    if (action.type === `ADD_ROLE` && !user.roles.includes(action.role)) {
+        return {...user, roles: [...user.roles, action.role]};
+    }
+    return user;
+}
+
+function updateNameReducer (user, action) {
+    if (action.type === `UPDATE_NAME`) {
+        return {...user, name: action.name};
+    }
+    return user;
+}
+
+// Introduce REMOVE_ROLE...
+function removeRoleReducer (user, action) {
+    if (action.type === `REMOVE_ROLE`) {
+        const filterByRole = user.roles.filter((role) => {  // It is important to consider the power of this filter 
+        // method here. The method returns a new array, and usually it does not stop iterating. While all methods are
+        // important and powerful in their own ways, a method that returns an array can really help solve a lot of 
+        // problems. Here, it returns an array of items that match the condition that the role in the original array
+        // does not include the action role. In this case, that means that filter will chech action.role and returns
+        // an array of an item that does not have that specific item. Notice that the method is used on the user.roles
+        // array and this means that that will remove the specified item.
+            return role !== action.role;
+        });
+        if (filterByRole) {  // Another slight correction here...
+        // This check is not relevant because arrays are truthy. That means that this will always return true. Instead
+        // of this, you could go directly to the immutable change.
+            return {...user, roles: filterByRole};
+        }
+        return user;
+    }
+    return user;
+}
+
+const userReducerFunctions = [
+    toggleActiveReducer, 
+    addRoleReducer, 
+    updateNameReducer, 
+    removeRoleReducer
+];
+
+function userReducer (state, action) {
+    return state.map((object) => {
+        if (object.id !== action.id) return object;
+
+        return userReducerFunctions.reduce((user, reducerFunction) => {
+            return reducerFunction(user, action);
+        }, object);
+    });
+}
+
+function userReducerDispatch (users, actions) {
+    return actions.reduce((acc, action) => {
+        return userReducer(acc, action);
+    }, users);
+}
+
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => { // Here we go deeper into data pipeline structures to create dynamic structures
+    console.log(`I'm here`);
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" }
+];
+
+function toggleActiveReducer (user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        return {...user, active: !user.active};
+    }
+    return user;
+}
+
+function addRoleReducer (user, action) {
+    if (action.type === `ADD_ROLE` && !user.roles.includes(action.role)) {
+        return {...user, roles: [...user.roles, action.role]};
+    }
+    return user;
+}
+
+function createUserPipeline (userReducerFunctions) {
+    return function (users, actions) {  // This function is the dispatch function. It is returned to the createUserPipeline
+    // function.
+        return actions.reduce((acc, action) => {
+            return acc.map((object) => {  // acc.map represents the state. acc.map targets the original input.
+                if (object.id !== action.id) return object;
+
+                return userReducerFunctions.reduce((user, reducerFunction) => {
+                    return reducerFunction(user, action);
+                }, object);
+            });
+        }, users);
+    }
+}
+
+const userReducerDispatch = createUserPipeline([toggleActiveReducer, addRoleReducer]);
 const finalState = userReducerDispatch(users, actions);
 console.log(finalState);
 })();
