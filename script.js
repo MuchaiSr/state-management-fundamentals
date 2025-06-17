@@ -397,7 +397,6 @@ console.log(finalState);
 })();
 
 (() => { // Here we go deeper into data pipeline structures to create dynamic structures
-    console.log(`I'm here`);
     const users = [
   { id: 1, name: "Alice", active: true, roles: ["admin"] },
   { id: 2, name: "Bob", active: false, roles: ["user"] },
@@ -429,7 +428,9 @@ function createUserPipeline (userReducerFunctions) {
     // function.
         return actions.reduce((acc, action) => {
             return acc.map((object) => {  // acc.map represents the state. acc.map targets the original input.
-                if (object.id !== action.id) return object;
+                if (object.id !== action.id) return object;  // The purpose of this statement is to specify who should
+                // be affected by the new action. What this does is that it returns the object (user) unchanged if its/
+                // his id does not match that of the action So is meant to target a certain object.
 
                 return userReducerFunctions.reduce((user, reducerFunction) => {
                     return reducerFunction(user, action);
@@ -440,6 +441,206 @@ function createUserPipeline (userReducerFunctions) {
 }
 
 const userReducerDispatch = createUserPipeline([toggleActiveReducer, addRoleReducer]);
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => {  // Here, we introduce DEACTIVATE_ALL.
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" },
+  { type: "DEACTIVATE_ALL" }
+];
+
+function toggleActiveReducer (user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        return {...user, active: !user.active};
+    }
+    return user;
+}
+
+function addRoleReducer (user, action) {
+    if (action.type === `ADD_ROLE` && !user.roles.includes(action.role)) {
+        return {...user, roles: [...user.roles, action.role]};
+    }
+    return user;
+}
+
+function deactivateAllReducer (user, action) {
+    if (action.type === `DEACTIVATE_ALL`) {
+        return {...user, active: false};
+    }
+    return user;
+}
+
+function createUserPipeline (userReducerFunctions) {
+    return function (users, actions) {  // This function is the dispatch function. It is returned to the createUserPipeline
+    // function.
+        return actions.reduce((acc, action) => {
+            return acc.map((object) => {  // acc.map represents the state. acc.map targets the original input.
+                if (action.id !== undefined && object.id !== action.id) return object;  
+                // As mentioned above, this is meant to specify what object/user is to be targeted by the action. 
+                // If the object does not match the conditions set here, 
+                // it will be skipped till the object/user that matches the condition is 
+                // found. In this example, we've introduced an action that has no id. Typically that is meant to target
+                // everyone in the state. So if the action's id is undefined i.e it does not exist/has not been 
+                // created or defined, everyone will be targeted. If the action's id has been defined, it means
+                // one object/user will be targeted and this means that we need to have an added condition and this 
+                // condition is object.id !== action.id. So in short, this statement is important because it targets
+                // actions with an id and actions without ids.
+
+                return userReducerFunctions.reduce((user, reducerFunction) => {
+                    return reducerFunction(user, action);
+                }, object);
+            });
+        }, users);
+    }
+}
+
+const userReducerDispatch = createUserPipeline([toggleActiveReducer, addRoleReducer, deactivateAllReducer]);
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => {
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },           // Only user with id 2
+  { type: "ADD_ROLE", role: "editor" },       // No id, so affects all users
+  { type: "UPDATE_NAME", id: 3, name: "Chuck" },
+  { type: `TOGGLE_ACTIVE` },
+  { type: `REMOVE_ROLE`, role:`user`, id: 3},
+];
+
+// Reducers (you can add more or modify these)
+function toggleActiveReducer(user, action) {
+  if (action.type === "TOGGLE_ACTIVE") {
+    return { ...user, active: !user.active };
+  }
+  return user;
+}
+
+function addRoleReducer(user, action) {
+  if (action.type === "ADD_ROLE" && !user.roles.includes(action.role)) {
+    return { ...user, roles: [...user.roles, action.role] };
+  }
+  return user;
+}
+
+function updateNameReducer(user, action) {
+  if (action.type === "UPDATE_NAME") {
+    return { ...user, name: action.name };
+  }
+  return user;
+}
+
+function removeRoleReducer (user, action) {
+    if (action.type === `REMOVE_ROLE`) {
+        const filterByRole = user.roles.filter((role) => {
+            return role !== action.role;
+        });
+        return {...user, roles: filterByRole};
+    }
+    return user;
+}
+
+const userReducerFunctions = [toggleActiveReducer, addRoleReducer, updateNameReducer, removeRoleReducer];
+
+// Pipeline builder
+function createUserPipeline(reducerFunctions) {
+  return function(users, actions) {
+    return actions.reduce((currentUsers, action) => {
+      return currentUsers.map(user => {
+        // Apply action if:
+        // - action.id is undefined (global action)
+        // OR
+        // - user.id matches action.id (targeted action)
+        if (action.id === undefined || user.id === action.id) {
+          return reducerFunctions.reduce((updatedUser, reducer) => {
+            console.log(`Action: ${action.type}, Target: ${updatedUser.name}, Reducer: ${reducer.name}`);
+            return reducer(updatedUser, action);
+          }, user);
+        }
+        return user;
+      });
+    }, users);
+  };
+}
+
+const userReducerDispatch = createUserPipeline(userReducerFunctions);
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => { // Here we introduce RESET_ROLES.
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" },
+  { type: "RESET_ROLES", id: 2 },   // Targets only user with id 2
+  { type: "RESET_ROLES" },          // Targets all users
+];
+
+function toggleActiveReducer (user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        return {...user, active:!user.active};
+    }
+    return user;
+}
+
+function addRoleReducer (user, action) {
+    if (action.role === `ADD_ROLE` && !user.roles.includes(action.role)) {
+        return {...user, roles: [...user.roles, action.role]};
+    }
+    return user;
+}
+
+function resetRolesReducer (user, action) {
+    if (action.type === `RESET_ROLES`) {
+        console.log(`Resetting roles for ${user.name}`);
+        return {...user, roles: []};
+    }
+    return user;
+}
+
+function createUserPipeline (userReducerFunctions) {
+    return function userReducerDispatch (users, actions) {
+        return actions.reduce((acc, action) => {
+            return acc.map((object) => {
+                if (action.type !== undefined && object.id !== action.id) return object;
+
+                return userReducerFunctions.reduce((user, reducerFunction) => {
+                    console.log(`Action: ${action.type}, Target: ${user.name}, Reducer: ${reducerFunction.name}`);
+                    return reducerFunction(user, action);
+                }, object);
+            });
+        }, users);
+    }
+}
+
+const userReducerDispatch = createUserPipeline([
+    toggleActiveReducer,
+    addRoleReducer,
+    resetRolesReducer,
+]);
 const finalState = userReducerDispatch(users, actions);
 console.log(finalState);
 })();
