@@ -569,7 +569,7 @@ function createUserPipeline(reducerFunctions) {
         // - user.id matches action.id (targeted action)
         if (action.id === undefined || user.id === action.id) {
           return reducerFunctions.reduce((updatedUser, reducer) => {
-            console.log(`Action: ${action.type}, Target: ${updatedUser.name}, Reducer: ${reducer.name}`);
+            console.log(`\nAction: ${action.type}, Target: ${updatedUser.name}, Reducer: ${reducer.name}`);
             return reducer(updatedUser, action);
           }, user);
         }
@@ -622,14 +622,91 @@ function resetRolesReducer (user, action) {
 }
 
 function createUserPipeline (userReducerFunctions) {
-    return function userReducerDispatch (users, actions) {
+    return function (users, actions) {
         return actions.reduce((acc, action) => {
             return acc.map((object) => {
-                if (action.type !== undefined && object.id !== action.id) return object;
+                if (action.id !== undefined && object.id !== action.id) return object;
 
-                return userReducerFunctions.reduce((user, reducerFunction) => {
-                    console.log(`Action: ${action.type}, Target: ${user.name}, Reducer: ${reducerFunction.name}`);
+                return userReducerFunctions.reduce((user, reducerFunction) => {  // This is one way you can use to 
+                // log what action is being acted upon and what user the action is affecting. There is another way
+                // you can do the same. For that, look at the example below this IIFE.
+                    console.log(`\nAction: ${action.type}, Target: ${user.name}, Reducer: ${reducerFunction.name}`);
                     return reducerFunction(user, action);
+                }, object);
+            });
+        }, users);
+    }
+}
+
+const userReducerDispatch = createUserPipeline([
+    toggleActiveReducer,
+    addRoleReducer,
+    resetRolesReducer,
+]);
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => {  // Here, we enhance the logging so that we can see...
+// Which action is being applied.
+// Which reducer is running.
+// What the state of the user looks like after each step.
+console.log(`I'm here`);
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" },
+  { type: "RESET_ROLES", id: 2 },   // Targets only user with id 2
+  { type: "RESET_ROLES" },          // Targets all users
+];
+
+function toggleActiveReducer (user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        console.log(`\nToggling active status for ${user.name}`);
+        return {...user, active:!user.active};
+    }
+    return user;
+}
+
+function addRoleReducer (user, action) {
+    if (action.type === `ADD_ROLE` && !user.roles.includes(action.role)) {
+        console.log(`\nAdding roles for ${user.name}`);
+        return {...user, roles: [...user.roles, action.role]};
+    }
+    return user;
+}
+
+function resetRolesReducer (user, action) {
+    if (action.type === `RESET_ROLES`) {
+        console.log(`\nResetting roles for ${user.name}`);
+        return {...user, roles: []};
+    }
+    return user;
+}
+
+function createUserPipeline (userReducerFunctions) {
+    return function (users, actions) {
+        return actions.reduce((acc, action) => {
+            return acc.map((object) => {
+                if (action.id !== undefined && object.id !== action.id) return object;
+
+                return userReducerFunctions.reduce((user, reducerFunction) => { 
+                    const before = JSON.stringify(user);
+                    const result = reducerFunction(user, action);
+                    const after = JSON.stringify(result);
+
+                    console.log(`\nReducer: ${reducerFunction.name}`);
+                    console.log(`Action: ${JSON.stringify(action)}`);
+                    console.log(`User before: ${before}`);
+                    console.log(`User after:  ${after}`);
+
+                    return result;
                 }, object);
             });
         }, users);
