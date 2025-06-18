@@ -1,0 +1,13 @@
+{
+  "name": "modular-version",
+  "version": "1.0.0",
+  "description": "Modular version of my state management practice using Node.js and ES modules",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "keywords": ["javascript", "state-management", "nodejs", "modules"],
+  "author": "Muchai Collins",
+  "license": "MIT"
+}

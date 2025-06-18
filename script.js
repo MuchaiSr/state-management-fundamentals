@@ -722,7 +722,6 @@ console.log(finalState);
 })();
 
 (() => {
-    console.log(`I'm here`);
     const users = [
   { id: 1, name: "Alice", active: true, roles: ["admin"] },
   { id: 2, name: "Bob", active: false, roles: ["user"] },
@@ -790,6 +789,90 @@ function createUserPipeline (reducerMap) {
         }, users);
     }
 }
+
+const userReducerDispatch = createUserPipeline(reducerMap);
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => {
+    console.log(`I'm here`);
+    const users =  [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" },
+  { type: "RESET_ROLES", id: 2 },
+  { type: "RESET_ROLES" },
+  { type: "RENAME_USER", id: 3, newName: "Chuck" },
+];
+
+// Reducers
+function toggleActiveReducer(user, action) {
+    if (action.type === `TOGGLE_ACTIVE`) {
+        return { ...user, active: !user.active };
+    }
+  return user;
+}
+
+function addRoleReducer(user, action) {
+  if (!user.roles.includes(action.role)) {
+    return { ...user, roles: [...user.roles, action.role] };
+  }
+  return user;
+}
+
+function resetRolesReducer(user, action) {
+    if (action.type === `RESET_ROLES`) {
+        return { ...user, roles: [] };
+    }
+  return user;
+}
+
+function renameUserReducer (user, action) {
+    if (action.type === `RENAME_USER`) {
+        return {...user, name: action.newName};
+    }
+}
+
+// create lookup table.
+const reducerMap = {
+    TOGGLE_ACTIVE: toggleActiveReducer,
+    ADD_ROLE: addRoleReducer,
+    RESET_ROLES: resetRolesReducer,
+    RENAME_USER: renameUserReducer,
+}
+
+// create pipeline engine.
+function createUserPipeline (reducerMap) {
+    return function userReducerDispatch (users, actions) {
+        return actions.reduce((acc, action) => {
+            const reducer = reducerMap[action.type];  
+            if (!reducer) return acc; 
+            
+            return acc.map((object) => {
+                if (action.id !== undefined && object.id !== action.id) return object;
+
+                const before = JSON.stringify(object);
+                const results = reducer(object, action);
+                const after = JSON.stringify(results);
+
+                console.log(`\n${[action.type]}`);
+                console.log(`${object.name}`);
+                console.log(`Before: ${before}`);
+                console.log(`After: ${after}`);
+
+                return results;
+            });
+        }, users);
+    }
+}
+
 
 const userReducerDispatch = createUserPipeline(reducerMap);
 const finalState = userReducerDispatch(users, actions);
