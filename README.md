@@ -39,17 +39,18 @@ node main.js
 
 Your `package.json` should include:
 
-```json```
+```json
 {
   "type": "module"
 }
+```
 
 ## Usage
 
 Run the project with Node.js by executing:
 
 ```bash```
-node main.js
+```node main.js```
 
 You’ll see console logs showing:
 
