@@ -651,7 +651,6 @@ console.log(finalState);
 // Which action is being applied.
 // Which reducer is running.
 // What the state of the user looks like after each step.
-console.log(`I'm here`);
     const users = [
   { id: 1, name: "Alice", active: true, roles: ["admin"] },
   { id: 2, name: "Bob", active: false, roles: ["user"] },
@@ -718,6 +717,81 @@ const userReducerDispatch = createUserPipeline([
     addRoleReducer,
     resetRolesReducer,
 ]);
+const finalState = userReducerDispatch(users, actions);
+console.log(finalState);
+})();
+
+(() => {
+    console.log(`I'm here`);
+    const users = [
+  { id: 1, name: "Alice", active: true, roles: ["admin"] },
+  { id: 2, name: "Bob", active: false, roles: ["user"] },
+  { id: 3, name: "Charlie", active: true, roles: ["user", "moderator"] }
+];
+
+const actions = [
+  { type: "TOGGLE_ACTIVE", id: 2 },
+  { type: "ADD_ROLE", id: 3, role: "admin" },
+  { type: "ADD_ROLE", id: 2, role: "editor" },
+  { type: "RESET_ROLES", id: 2 },
+  { type: "RESET_ROLES" },
+];
+
+// Reducers
+function toggleActiveReducer(user, action) {
+  return { ...user, active: !user.active };
+}
+
+function addRoleReducer(user, action) {
+  if (!user.roles.includes(action.role)) {
+    return { ...user, roles: [...user.roles, action.role] };
+  }
+  return user;
+}
+
+function resetRolesReducer(user, action) {
+  return { ...user, roles: [] };
+}
+
+// create lookup table.
+const reducerMap = {
+    TOGGLE_ACTIVE: toggleActiveReducer,
+    ADD_ROLE: addRoleReducer,
+    RESET_ROLES: resetRolesReducer,
+}
+
+// create pipeline engine.
+function createUserPipeline (reducerMap) {
+    return function userReducerDispatch (users, actions) {
+        return actions.reduce((acc, action) => {
+            const reducer = reducerMap[action.type];  // It is worth considering what is going on here for a moment.
+            // reducerMap is a lookup table. It's an object that has keys that are values for other objects and the values
+            // are function references. action.type is in reference to the particular action which is an object and type
+            // is one of its keys. So action.type could be ADD_ROLE or one of the other action types. The lookup table
+            // looks into this and draws one action type and then it goes within itself to find the value that corres-
+            // ponds to the action.type. So if it finds ADD_ROLE, this is checked within and then returns the value
+            // of the key ADD_ROLE to the variable reducer. So reducer in this example would be addRoleReducer.
+            if (!reducer) return acc; // Remember, acc holds the current users array in the current state because the userReducer-
+            // Dipatch function draws the input from the global scope.
+            return acc.map((object) => {
+                if (action.id !== undefined && object.id !== action.id) return object;
+
+                const before = JSON.stringify(object);
+                const results = reducer(object, action);
+                const after = JSON.stringify(results);
+
+                console.log(`\n${[action.type]}`);
+                console.log(`${object.name}`);
+                console.log(`Before: ${before}`);
+                console.log(`After: ${after}`);
+
+                return results;
+            });
+        }, users);
+    }
+}
+
+const userReducerDispatch = createUserPipeline(reducerMap);
 const finalState = userReducerDispatch(users, actions);
 console.log(finalState);
 })();
