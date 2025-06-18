@@ -26,7 +26,7 @@ This repo also includes a **modular version** with separate folders for data, re
 
 Make sure you have **Node.js** installed.
 
-```bash```
+```sudo apt install nodejs npm -y```
 
 # Clone the repository
 git clone https://github.com/MuchaiSr/state-management-fundamentals.git
@@ -49,7 +49,6 @@ Your `package.json` should include:
 
 Run the project with Node.js by executing:
 
-```bash```
 ```node main.js```
 
 You’ll see console logs showing:
